@@ -14,4 +14,15 @@ use etag
   use action Discard;
   use action Resume;
   use action Prepare;
+
+  /* non factory instance action
+   * added in ZRAP100_R_TRAVELTP_D01
+   * Implemented in ZRAP100_BP_TRAVELTP_D01
+   * Annotated in ZRAP100_C_TRAVELTP_D01 above "OVERALL STATUS" */
+  use action deductDiscount;
+
+  /* Factory Method */
+  use action copyTravel;
+
+
 }

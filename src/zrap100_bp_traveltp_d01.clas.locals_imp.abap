@@ -21,6 +21,13 @@ CLASS lhc_travel DEFINITION INHERITING FROM cl_abap_behavior_handler.
 
     METHODS validateDates FOR VALIDATE ON SAVE
       IMPORTING keys FOR Travel~validateDates.
+
+*   non factory instance action
+*   added in ZRAP100_R_TRAVELTP_D01
+*   Implemented in ZRAP100_BP_TRAVELTP_D01
+*   Annotated in ZRAP100_C_TRAVELTP_D01 above "OVERALL STATUS"
+    METHODS deductDiscount FOR MODIFY
+      IMPORTING keys FOR ACTION Travel~deductDiscount RESULT result.
 ENDCLASS.
 
 CLASS lhc_travel IMPLEMENTATION.
@@ -246,6 +253,48 @@ CLASS lhc_travel IMPLEMENTATION.
       ENDIF.
     ENDLOOP.
 
+  ENDMETHOD.
+
+
+**************************************************************************
+* Instance-bound non-factory action:
+* Deduct the specified discount from the booking fee (BookingFee)
+**************************************************************************
+  METHOD deductDiscount.
+    DATA travels_for_update TYPE TABLE FOR UPDATE zrap100_r_traveltp_d01.
+    DATA(keys_with_valid_discount) = keys.
+
+    " read relevant travel instance data (only booking fee)
+    READ ENTITIES OF ZRAP100_R_TravelTP_d01 IN LOCAL MODE
+        ENTITY Travel
+        FIELDS ( BookingFee )
+        WITH CORRESPONDING #( keys_with_valid_discount )
+        RESULT DATA(travels).
+
+    LOOP AT travels ASSIGNING FIELD-SYMBOL(<travel>).
+      DATA(reduced_fee) = <travel>-BookingFee * ( 1 - 3 / 10 ) .
+
+      APPEND VALUE #( %tky       = <travel>-%tky
+                    BookingFee = reduced_fee
+                  ) TO travels_for_update.
+    ENDLOOP.
+
+    " update data with reduced fee
+    MODIFY ENTITIES OF ZRAP100_R_TravelTP_d01 IN LOCAL MODE
+        ENTITY Travel
+        UPDATE FIELDS ( BookingFee )
+        WITH travels_for_update.
+
+    " read changed data for action result
+    READ ENTITIES OF ZRAP100_R_TravelTP_d01 IN LOCAL MODE
+        ENTITY Travel
+        ALL FIELDS WITH
+        CORRESPONDING #( travels )
+        RESULT DATA(travels_with_discount).
+
+    " set action result
+    result = VALUE #( FOR travel IN travels_with_discount ( %tky   = travel-%tky
+                                                              %param = travel ) ).
   ENDMETHOD.
 
 
